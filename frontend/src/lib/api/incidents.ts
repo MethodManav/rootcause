@@ -3,16 +3,45 @@ import { buildFindings, buildToolSteps, scenarioForIncidentType } from "@/lib/mo
 import type { AgentRun, Incident, ToolExecution } from "@/types";
 import { ApiError, delay } from "./utils";
 
+import { mapBackendTransaction } from "./transactions";
+
 export async function getIncidents(): Promise<Incident[]> {
-  await delay(500);
-  return [...incidents].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  try {
+    const res = await fetch('/api/transactions/incident');
+    if (!res.ok) throw new Error('Failed to fetch incidents');
+    const json = await res.json();
+    return json.data.map(mapBackendIncident).sort((a: Incident, b: Incident) => b.createdAt.localeCompare(a.createdAt));
+  } catch (error) {
+    throw new ApiError('Could not load incidents from backend');
+  }
 }
 
 export async function getIncident(id: string): Promise<Incident> {
-  await delay(300);
-  const found = incidents.find((i) => i.id === id);
-  if (!found) throw new ApiError(`Incident ${id} not found`);
-  return found;
+  try {
+    const res = await fetch('/api/transactions/incident');
+    if (!res.ok) throw new Error('Failed to fetch incidents');
+    const json = await res.json();
+    const found = json.data.find((t: any) => `inc_${t.id}` === id);
+    if (!found) throw new ApiError(`Incident ${id} not found`);
+    return mapBackendIncident(found);
+  } catch (error) {
+    throw new ApiError(`Incident ${id} not found`);
+  }
+}
+
+export function mapBackendIncident(backendTx: any): Incident {
+  return {
+    id: `inc_${backendTx.id}`,
+    transactionId: backendTx.id,
+    customerId: backendTx.userId,
+    type: "Payment Failure",
+    severity: backendTx.amount > 2000 ? "HIGH" : "MEDIUM",
+    status: "OPEN",
+    aiConfidence: null,
+    agentRunId: null,
+    createdAt: backendTx.timestamp,
+    updatedAt: backendTx.timestamp,
+  };
 }
 
 export async function resolveIncident(id: string): Promise<Incident> {
@@ -37,9 +66,13 @@ export async function startInvestigation(
   onEvent: (event: InvestigationEvent) => void,
   signal?: AbortSignal,
 ): Promise<AgentRun> {
-  const incident = incidents.find((i) => i.id === incidentId);
-  if (!incident) throw new ApiError(`Incident ${incidentId} not found`);
-  const transaction = transactions.find((t) => t.id === incident.transactionId);
+  const resInc = await fetch('/api/transactions/incident');
+  const jsonInc = await resInc.json();
+  const foundBackendInc = jsonInc.data.find((t: any) => `inc_${t.id}` === incidentId);
+  if (!foundBackendInc) throw new ApiError(`Incident ${incidentId} not found`);
+  const incident = mapBackendIncident(foundBackendInc);
+
+  const transaction = mapBackendTransaction(foundBackendInc);
   if (!transaction) throw new ApiError(`Transaction ${incident.transactionId} not found`);
 
   const runId = `RUN-${runCounter++}`;
