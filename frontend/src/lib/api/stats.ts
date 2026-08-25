@@ -1,5 +1,4 @@
-import { incidents, transactions } from "@/lib/mock-data";
-import { delay } from "./utils";
+import { ApiError } from "./utils";
 
 export interface OverviewStats {
   totalTransactions: number;
@@ -13,22 +12,14 @@ export interface OverviewStats {
 }
 
 export async function getOverviewStats(): Promise<OverviewStats> {
-  await delay(450);
-  const totalTransactions = 12482;
-  const failedTransactions = transactions.filter((t) => t.status === "FAILED").length + 320;
-  const activeIncidents = incidents.filter((i) => i.status === "OPEN" || i.status === "INVESTIGATING").length + 24;
-  const criticalIncidents = incidents.filter((i) => i.severity === "CRITICAL").length + 4;
-
-  return {
-    totalTransactions,
-    totalTransactionsChangePct: 8.4,
-    failedTransactions,
-    failedTransactionsPct: Number(((failedTransactions / totalTransactions) * 100).toFixed(1)),
-    activeIncidents,
-    activeIncidentsCreatedToday: 4,
-    criticalIncidents,
-    criticalRequiringAttention: 2,
-  };
+  try {
+    const res = await fetch('/api/dashboard/stats');
+    if (!res.ok) throw new Error('Failed to fetch dashboard stats');
+    const json = await res.json();
+    return json.data;
+  } catch (error) {
+    throw new ApiError('Could not load dashboard stats from backend');
+  }
 }
 
 export interface SeverityBreakdown {
@@ -37,11 +28,12 @@ export interface SeverityBreakdown {
 }
 
 export async function getIncidentSeverityBreakdown(): Promise<SeverityBreakdown[]> {
-  await delay(400);
-  return [
-    { severity: "CRITICAL", count: 6 },
-    { severity: "HIGH", count: 12 },
-    { severity: "MEDIUM", count: 8 },
-    { severity: "LOW", count: 2 },
-  ];
+  try {
+    const res = await fetch('/api/dashboard/severity');
+    if (!res.ok) throw new Error('Failed to fetch severity breakdown');
+    const json = await res.json();
+    return json.data;
+  } catch (error) {
+    throw new ApiError('Could not load severity breakdown from backend');
+  }
 }

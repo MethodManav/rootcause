@@ -30,12 +30,27 @@ export async function getIncident(id: string): Promise<Incident> {
 }
 
 export function mapBackendIncident(backendTx: any): Incident {
+  let type: Incident["type"] = "Payment Failure";
+  let severity: Incident["severity"] = "MEDIUM";
+
+  if (backendTx.errorCategory === "FRAUD_SUSPECTED") {
+    type = "Potential Payment Fraud";
+    severity = "CRITICAL";
+  } else if (backendTx.errorCategory === "NETWORK_ERROR") {
+    type = "Provider Timeout";
+    severity = "HIGH";
+  } else {
+    // INSUFFICIENT_FUNDS, EXPIRED_CARD, CARD_DECLINED, INVALID_CVV
+    type = "Payment Failure";
+    severity = backendTx.amount > 2000 ? "HIGH" : backendTx.amount > 500 ? "MEDIUM" : "LOW";
+  }
+
   return {
     id: `inc_${backendTx.id}`,
     transactionId: backendTx.id,
     customerId: backendTx.userId,
-    type: "Payment Failure",
-    severity: backendTx.amount > 2000 ? "HIGH" : "MEDIUM",
+    type,
+    severity,
     status: "OPEN",
     aiConfidence: null,
     agentRunId: null,
@@ -46,8 +61,13 @@ export function mapBackendIncident(backendTx: any): Incident {
 
 export async function resolveIncident(id: string): Promise<Incident> {
   await delay(400);
-  const incident = incidents.find((i) => i.id === id);
-  if (!incident) throw new ApiError(`Incident ${id} not found`);
+  const res = await fetch('/api/transactions/incident');
+  if (!res.ok) throw new ApiError(`Failed to fetch incident ${id}`);
+  const json = await res.json();
+  const found = json.data.find((t: any) => `inc_${t.id}` === id);
+  if (!found) throw new ApiError(`Incident ${id} not found`);
+
+  const incident = mapBackendIncident(found);
   incident.status = "RESOLVED";
   incident.updatedAt = new Date().toISOString();
   return incident;

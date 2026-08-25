@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import investigationRoutes from './routes/investigation.routes';
 import transactionRoutes from './routes/transaction.routes';
+import dashboardRoutes from './routes/dashboard.routes';
 
 const app = express();
 
@@ -23,6 +24,7 @@ app.get('/health', (req: Request, res: Response) => {
 
 app.use('/api/investigations', investigationRoutes);
 app.use('/api/transactions', transactionRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // 404 handler for unknown routes
 app.use((req: Request, res: Response) => {
