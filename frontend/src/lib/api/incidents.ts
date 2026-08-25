@@ -1,4 +1,4 @@
-import { agentRuns, incidents, transactions } from "@/lib/mock-data";
+import { agentRuns } from "@/lib/mock-data";
 import { buildFindings, buildToolSteps, scenarioForIncidentType } from "@/lib/mock-data/scenarios";
 import type { AgentRun, Incident, ToolExecution } from "@/types";
 import { ApiError, delay } from "./utils";
