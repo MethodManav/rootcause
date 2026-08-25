@@ -26,7 +26,7 @@ export function Sidebar() {
         <div className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
           <ShieldAlert className="size-4" />
         </div>
-        <span className="text-sm font-semibold tracking-tight">Sentinel</span>
+        <span className="text-sm font-semibold tracking-tight">rootcause</span>
       </div>
 
       <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
@@ -64,7 +64,7 @@ export function Sidebar() {
           </div>
           <div className="min-w-0">
             <p className="truncate text-sm font-medium leading-tight">Ops Analyst</p>
-            <p className="truncate text-xs leading-tight text-muted-foreground">ops@sentinel.dev</p>
+            <p className="truncate text-xs leading-tight text-muted-foreground">ops@rootcause.dev</p>
           </div>
         </div>
       </div>

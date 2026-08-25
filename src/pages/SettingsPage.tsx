@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 
 const ROWS = [
-  { label: "Organization", value: "Sentinel Payments Ops" },
+  { label: "Organization", value: "rootcause Payments Ops" },
   { label: "Environment", value: "Production" },
   { label: "Default agent", value: "Payment Investigator" },
   { label: "Investigation timeout", value: "30s per tool call" },
