@@ -5,9 +5,11 @@ import { ApiError, delay } from "./utils";
 
 import { mapBackendTransaction } from "./transactions";
 
+const API_URL = import.meta.env.VITE_API_URL || '';
+
 export async function getIncidents(): Promise<Incident[]> {
   try {
-    const res = await fetch('/api/transactions/incident');
+    const res = await fetch(`${API_URL}/api/transactions/incident`);
     if (!res.ok) throw new Error('Failed to fetch incidents');
     const json = await res.json();
     return json.data.map(mapBackendIncident).sort((a: Incident, b: Incident) => b.createdAt.localeCompare(a.createdAt));
@@ -18,7 +20,7 @@ export async function getIncidents(): Promise<Incident[]> {
 
 export async function getIncident(id: string): Promise<Incident> {
   try {
-    const res = await fetch('/api/transactions/incident');
+    const res = await fetch(`${API_URL}/api/transactions/incident`);
     if (!res.ok) throw new Error('Failed to fetch incidents');
     const json = await res.json();
     const found = json.data.find((t: any) => `inc_${t.id}` === id);
@@ -61,7 +63,7 @@ export function mapBackendIncident(backendTx: any): Incident {
 
 export async function resolveIncident(id: string): Promise<Incident> {
   await delay(400);
-  const res = await fetch('/api/transactions/incident');
+  const res = await fetch(`${API_URL}/api/transactions/incident`);
   if (!res.ok) throw new ApiError(`Failed to fetch incident ${id}`);
   const json = await res.json();
   const found = json.data.find((t: any) => `inc_${t.id}` === id);
@@ -86,7 +88,7 @@ export async function startInvestigation(
   onEvent: (event: InvestigationEvent) => void,
   signal?: AbortSignal,
 ): Promise<AgentRun> {
-  const resInc = await fetch('/api/transactions/incident');
+  const resInc = await fetch(`${API_URL}/api/transactions/incident`);
   const jsonInc = await resInc.json();
   const foundBackendInc = jsonInc.data.find((t: any) => `inc_${t.id}` === incidentId);
   if (!foundBackendInc) throw new ApiError(`Incident ${incidentId} not found`);

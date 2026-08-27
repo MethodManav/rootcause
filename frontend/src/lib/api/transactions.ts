@@ -1,9 +1,11 @@
 import type { Transaction, PaymentProvider, PaymentMethod } from "@/types";
 import { ApiError } from "./utils";
 
+const API_URL = import.meta.env.VITE_API_URL || '';
+
 export async function getTransactions(): Promise<Transaction[]> {
   try {
-    const res = await fetch('/api/transactions/list');
+    const res = await fetch(`${API_URL}/api/transactions/list`);
     if (!res.ok) throw new Error('Failed to fetch transactions');
     const json = await res.json();
     
@@ -17,7 +19,7 @@ export async function getTransaction(id: string): Promise<Transaction> {
   // If we only have the list route, we can fetch all and find the one. 
   // Ideally, there should be a /api/transactions/:id route, but for now:
   try {
-    const res = await fetch('/api/transactions/list');
+    const res = await fetch(`${API_URL}/api/transactions/list`);
     if (!res.ok) throw new Error('Failed to fetch transactions');
     const json = await res.json();
     const found = json.data.find((t: any) => t.id === id);

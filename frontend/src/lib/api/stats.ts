@@ -1,5 +1,7 @@
 import { ApiError } from "./utils";
 
+const API_URL = import.meta.env.VITE_API_URL || '';
+
 export interface OverviewStats {
   totalTransactions: number;
   totalTransactionsChangePct: number;
@@ -13,7 +15,7 @@ export interface OverviewStats {
 
 export async function getOverviewStats(): Promise<OverviewStats> {
   try {
-    const res = await fetch('/api/dashboard/stats');
+    const res = await fetch(`${API_URL}/api/dashboard/stats`);
     if (!res.ok) throw new Error('Failed to fetch dashboard stats');
     const json = await res.json();
     return json.data;
@@ -29,7 +31,7 @@ export interface SeverityBreakdown {
 
 export async function getIncidentSeverityBreakdown(): Promise<SeverityBreakdown[]> {
   try {
-    const res = await fetch('/api/dashboard/severity');
+    const res = await fetch(`${API_URL}/api/dashboard/severity`);
     if (!res.ok) throw new Error('Failed to fetch severity breakdown');
     const json = await res.json();
     return json.data;
