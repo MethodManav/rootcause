@@ -16,15 +16,11 @@ export async function getTransactions(): Promise<Transaction[]> {
 }
 
 export async function getTransaction(id: string): Promise<Transaction> {
-  // If we only have the list route, we can fetch all and find the one. 
-  // Ideally, there should be a /api/transactions/:id route, but for now:
   try {
-    const res = await fetch(`${API_URL}/api/transactions/list`);
-    if (!res.ok) throw new Error('Failed to fetch transactions');
+    const res = await fetch(`${API_URL}/api/transactions/${id}`);
+    if (!res.ok) throw new Error('Failed to fetch transaction');
     const json = await res.json();
-    const found = json.data.find((t: any) => t.id === id);
-    if (!found) throw new ApiError(`Transaction ${id} not found`);
-    return mapBackendTransaction(found);
+    return mapBackendTransaction(json.data);
   } catch (error) {
     throw new ApiError(`Transaction ${id} not found`);
   }
