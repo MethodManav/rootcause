@@ -5,6 +5,7 @@ const router = Router();
 
 router.get('/list', (req, res) => transactionController.listTransactions(req, res));
 router.get('/incident', (req, res) => transactionController.listIncidents(req, res));
+router.post('/:id/investigate', (req, res) => transactionController.investigate(req, res));
 router.get('/:id', (req, res) => transactionController.getTransactionById(req, res));
 
 export default router;
