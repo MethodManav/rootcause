@@ -2,6 +2,9 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import swaggerUi from 'swagger-ui-express';
+import swaggerDocument from './swagger.json';
+
 import investigationRoutes from './routes/investigation.routes';
 import transactionRoutes from './routes/transaction.routes';
 import dashboardRoutes from './routes/dashboard.routes';
@@ -15,6 +18,13 @@ app.use(express.json());
 app.use(morgan('dev'));
 
 // Routes
+app.get('/', (req: Request, res: Response) => {
+  res.status(200).json({
+    success: true,
+    message: 'Rootcause API is running',
+  });
+});
+
 app.get('/health', (req: Request, res: Response) => {
   res.status(200).json({
     success: true,
@@ -25,6 +35,14 @@ app.get('/health', (req: Request, res: Response) => {
 app.use('/api/investigations', investigationRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+
+// Swagger UI
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
+// Raw OpenAPI JSON (useful for MCP and other automated integrations)
+app.get('/openapi.json', (req: Request, res: Response) => {
+  res.json(swaggerDocument);
+});
 
 // 404 handler for unknown routes
 app.use((req: Request, res: Response) => {
