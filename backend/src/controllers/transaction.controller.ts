@@ -34,6 +34,33 @@ export class TransactionController {
       });
     }
   }
+
+  // Returns a transaction by its ID
+  getTransactionById(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const transaction = mockTransactions.find(t => t.id === id);
+      
+      if (!transaction) {
+        res.status(404).json({
+          success: false,
+          error: { message: `Transaction with ID ${id} not found` }
+        });
+        return;
+      }
+      
+      res.status(200).json({
+        success: true,
+        data: transaction
+      });
+    } catch (error) {
+      console.error('[TransactionController] Error fetching transaction by ID:', error);
+      res.status(500).json({
+        success: false,
+        error: { message: "Internal server error" }
+      });
+    }
+  }
 }
 
 export const transactionController = new TransactionController();
