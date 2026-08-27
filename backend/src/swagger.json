@@ -187,6 +187,40 @@
         }
       }
     },
+    "/api/transactions/{id}/investigate": {
+      "post": {
+        "summary": "Investigate Transaction via AI",
+        "description": "Initiates an AI-driven root cause investigation for a specific transaction ID. Returns a Server-Sent Events (SSE) stream.",
+        "operationId": "investigateTransaction",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The ID of the transaction to investigate",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SSE Stream of AI investigation chunks",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string",
+                  "description": "Event stream data payload prefixed with 'data: '"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
     "/api/transactions/incident": {
       "get": {
         "summary": "List Incidents",
