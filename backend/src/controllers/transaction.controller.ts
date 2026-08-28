@@ -80,7 +80,7 @@ export class TransactionController {
 
       // 1. Create a session for the agent
       const session = await client.private.agents.sessions.create({
-        agentName: "agent-rootcause"
+        agentName: "agent-root"
       });
 
       // 2. Stream the response using that session
@@ -95,9 +95,9 @@ export class TransactionController {
       res.write('data: [DONE]\n\n');
       res.end();
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('[TransactionController] Error during investigation:', error);
-      res.write(`data: ${JSON.stringify({ error: "Internal server error" })}\n\n`);
+      res.write(`data: ${JSON.stringify({ error: error?.message || "Internal server error" })}\n\n`);
       res.end();
     }
   }

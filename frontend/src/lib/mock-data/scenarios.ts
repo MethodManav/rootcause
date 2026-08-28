@@ -31,7 +31,7 @@ export function buildToolSteps(ctx: ScenarioContext): ToolStep[] {
       arguments: { transactionId: ctx.transactionId },
       result:
         ctx.scenario === "timeout"
-          ? "Provider did not return a response within timeout window"
+          ? ""
           : "Provider response retrieved",
       summary: "Provider response retrieved",
     },
