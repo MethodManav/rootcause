@@ -110,6 +110,22 @@ export async function startInvestigation(
   incident.agentRunId = runId;
   onEvent({ type: "started", timestamp: startedAt, runId });
 
+  // Hit the backend API route
+  fetch(`${API_URL}/api/transactions/${transaction.id}/investigate`, {
+    method: 'POST',
+    signal
+  }).then(async (response) => {
+    if (response.body) {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        console.log("Investigation API chunk:", decoder.decode(value));
+      }
+    }
+  }).catch(err => console.error("Investigation API error:", err));
+
   const executions: ToolExecution[] = [];
   for (const step of steps) {
     onEvent({ type: "tool_start", tool: step.tool });
