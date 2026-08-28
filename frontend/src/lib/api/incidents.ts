@@ -1,9 +1,5 @@
-import { agentRuns } from "@/lib/mock-data";
-import { buildFindings, buildToolSteps, scenarioForIncidentType } from "@/lib/mock-data/scenarios";
-import type { AgentRun, Incident, ToolExecution } from "@/types";
+import type { Incident } from "@/types";
 import { ApiError, delay } from "./utils";
-
-import { mapBackendTransaction } from "./transactions";
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
