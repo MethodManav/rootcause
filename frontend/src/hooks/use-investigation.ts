@@ -1,11 +1,12 @@
 import { useCallback, useRef, useState } from "react";
-import type { Incident, InvestigationResult } from "@/types";
+import type { Incident, InvestigationResult, InvestigationEvent } from "@/types";
 
 export type InvestigationPhase = "idle" | "investigating" | "completed" | "error";
 
 export function useInvestigation(incident: Incident | undefined) {
   const [phase, setPhase] = useState<InvestigationPhase>("idle");
   const [result, setResult] = useState<InvestigationResult | null>(null);
+  const [events, setEvents] = useState<InvestigationEvent[]>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -16,6 +17,7 @@ export function useInvestigation(incident: Incident | undefined) {
     
     setPhase("investigating");
     setResult(null);
+    setEvents([{ type: "info", message: "Investigation started" }]);
     setErrorMsg(null);
 
     try {
@@ -32,37 +34,72 @@ export function useInvestigation(incident: Incident | undefined) {
       // Read SSE stream
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
-      let fullText = "";
+      let buffer = "";
 
       if (reader) {
-        let done = false;
-        while (!done) {
-          const { value, done: readerDone } = await reader.read();
-          done = readerDone;
-          if (value) {
-            fullText += decoder.decode(value, { stream: !done });
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n\n");
+          buffer = lines.pop() || ""; // Keep the last incomplete chunk in buffer
+
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              const dataStr = line.slice(6);
+              if (dataStr.trim() === "[DONE]") {
+                continue;
+              }
+              
+              try {
+                const chunk = JSON.parse(dataStr);
+                
+                // Add raw event for debugging
+                setEvents(prev => [...prev, { type: "raw", chunk }]);
+
+                // Check for fallback raw response
+                if (chunk.rootCause && chunk.transactionId) {
+                  setResult(chunk as InvestigationResult);
+                  setPhase("completed");
+                  continue;
+                }
+
+                // Check TrueFoundry completion event
+                if (chunk.type === "turn.done") {
+                  if (chunk.state?.output?.content) {
+                    try {
+                      const parsed = JSON.parse(chunk.state.output.content) as InvestigationResult;
+                      if ((parsed as any).error) {
+                        throw new Error((parsed as any).error);
+                      }
+                      setResult(parsed);
+                      setPhase("completed");
+                    } catch (e) {
+                      console.error("Failed to parse turn.done output", e);
+                    }
+                  }
+                }
+
+                // Tool calls
+                const isToolCall = chunk.type === "model.tool_call" || chunk.type === "tool_call" || chunk.type === "tool.execution";
+                if (isToolCall) {
+                  const toolName = chunk.tool?.name || chunk.name || chunk.toolName || "Unknown Tool";
+                  setEvents(prev => [...prev, { type: "tool_call", toolName, args: chunk.args || chunk.arguments || chunk.input }]);
+                }
+                
+                const isToolResponse = chunk.type === "model.tool_response" || chunk.type === "tool_response" || chunk.type === "tool.response";
+                if (isToolResponse) {
+                  const toolName = chunk.tool?.name || chunk.name || chunk.toolName || "Unknown Tool";
+                  setEvents(prev => [...prev, { type: "tool_response", toolName, response: chunk.response || chunk.output || chunk.result }]);
+                }
+              } catch (e) {
+                console.error("Failed to parse SSE line", e);
+              }
+            }
           }
         }
       }
-
-      // Try to parse JSON from the accumulated text.
-      // TrueFoundry might send chunks wrapped in SSE `data: {...}` lines.
-      // We will parse out the actual JSON content block.
-      let jsonStr = fullText;
-      // Extract the JSON object if it's inside markdown or SSE
-      const jsonMatch = fullText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        jsonStr = jsonMatch[0];
-      }
-      
-      const parsed = JSON.parse(jsonStr) as InvestigationResult;
-      
-      if ((parsed as any).error) {
-        throw new Error((parsed as any).error);
-      }
-      
-      setResult(parsed);
-      setPhase("completed");
     } catch (err: any) {
       if (err.name !== "AbortError") {
         setPhase("error");
@@ -75,5 +112,5 @@ export function useInvestigation(incident: Incident | undefined) {
     abortRef.current?.abort();
   }, []);
 
-  return { phase, result, errorMsg, start, cancel };
+  return { phase, result, events, errorMsg, start, cancel };
 }

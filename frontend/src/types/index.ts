@@ -125,3 +125,9 @@ export interface InvestigationResult {
   explanation: string;
   recommendedAction: string;
 }
+
+export type InvestigationEvent = 
+  | { type: "info"; message: string; data?: any }
+  | { type: "tool_call"; toolName: string; args: any }
+  | { type: "tool_response"; toolName: string; response: any; summary?: string; status?: string }
+  | { type: "raw"; chunk: any };

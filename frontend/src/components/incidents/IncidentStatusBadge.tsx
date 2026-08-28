@@ -9,8 +9,8 @@ const config: Record<IncidentStatus, { label: string; className: string }> = {
   ESCALATED: { label: "Escalated", className: "bg-critical/15 text-critical" },
 };
 
-export function IncidentStatusBadge({ status }: { status: IncidentStatus }) {
-  const { label, className } = config[status];
+export function IncidentStatusBadge({ status }: { status: IncidentStatus | string }) {
+  const { label, className } = config[status as IncidentStatus] || { label: status || "Unknown", className: "bg-muted text-muted-foreground" };
   return (
     <Badge className={cn("border-transparent", className)}>
       {status === "INVESTIGATING" && (
