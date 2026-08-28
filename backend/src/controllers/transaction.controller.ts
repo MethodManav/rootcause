@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { mockTransactions } from '../data';
+import { logger } from '../utils/logger';
 
 export class TransactionController {
   // Returns all transactions
@@ -10,7 +11,7 @@ export class TransactionController {
         data: mockTransactions
       });
     } catch (error) {
-      console.error('[TransactionController] Error fetching transactions:', error);
+      logger.error('[TransactionController] Error fetching transactions:', error);
       res.status(500).json({
         success: false,
         error: { message: "Internal server error" }
@@ -27,7 +28,7 @@ export class TransactionController {
         data: failedTransactions
       });
     } catch (error) {
-      console.error('[TransactionController] Error fetching incidents:', error);
+      logger.error('[TransactionController] Error fetching incidents:', error);
       res.status(500).json({
         success: false,
         error: { message: "Internal server error" }
@@ -54,7 +55,7 @@ export class TransactionController {
         data: transaction
       });
     } catch (error) {
-      console.error('[TransactionController] Error fetching transaction by ID:', error);
+      logger.error('[TransactionController] Error fetching transaction by ID:', error);
       res.status(500).json({
         success: false,
         error: { message: "Internal server error" }
@@ -79,8 +80,9 @@ export class TransactionController {
       });
 
       // 1. Create a session for the agent
+      const agentFqn = process.env.TRUEFOUNDRY_AGENT_FQN || "agent-root";
       const session = await client.private.agents.sessions.create({
-        agentName: "agent-root"
+        agentName: agentFqn
       });
 
       // 2. Stream the response using that session
@@ -96,7 +98,7 @@ export class TransactionController {
       res.end();
 
     } catch (error: any) {
-      console.error('[TransactionController] Error during investigation:', error);
+      logger.error('[TransactionController] Error during investigation:', error);
       res.write(`data: ${JSON.stringify({ error: error?.message || "Internal server error" })}\n\n`);
       res.end();
     }

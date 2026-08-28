@@ -1,77 +1,79 @@
-import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import type { Incident, InvestigationResult } from "@/types";
 
-import { startInvestigation, type InvestigationEvent } from "@/lib/api";
-import { buildToolSteps, scenarioForIncidentType } from "@/lib/mock-data/scenarios";
-import type { AgentRun, Incident, ToolExecution } from "@/types";
-
-export type TimelineStepStatus = "waiting" | "running" | "success";
-
-export interface TimelineStep {
-  tool: string;
-  status: TimelineStepStatus;
-  execution: ToolExecution | null;
-}
-
-export type InvestigationPhase = "idle" | "running" | "completed" | "error";
+export type InvestigationPhase = "idle" | "investigating" | "completed" | "error";
 
 export function useInvestigation(incident: Incident | undefined) {
-  const queryClient = useQueryClient();
   const [phase, setPhase] = useState<InvestigationPhase>("idle");
-  const [steps, setSteps] = useState<TimelineStep[]>([]);
-  const [run, setRun] = useState<AgentRun | null>(null);
-  const [startedAt, setStartedAt] = useState<string | null>(null);
+  const [result, setResult] = useState<InvestigationResult | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  const plannedTools = useMemo(() => {
-    if (!incident) return [];
-    const scenario = scenarioForIncidentType(incident.type);
-    return buildToolSteps({
-      transactionId: incident.transactionId,
-      customerId: incident.customerId,
-      scenario,
-    }).map((s) => s.tool);
-  }, [incident]);
-
-  const start = useCallback(() => {
+  const start = useCallback(async () => {
     if (!incident) return;
     const controller = new AbortController();
     abortRef.current = controller;
-    setPhase("running");
-    setRun(null);
-    setSteps(plannedTools.map((tool) => ({ tool, status: "waiting", execution: null })));
+    
+    setPhase("investigating");
+    setResult(null);
+    setErrorMsg(null);
 
-    function onEvent(event: InvestigationEvent) {
-      if (event.type === "started") {
-        setStartedAt(event.timestamp);
-      } else if (event.type === "tool_start") {
-        setSteps((prev) =>
-          prev.map((s) => (s.tool === event.tool && s.status === "waiting" ? { ...s, status: "running" } : s)),
-        );
-      } else if (event.type === "tool_end") {
-        setSteps((prev) =>
-          prev.map((s) =>
-            s.tool === event.execution.tool && s.status !== "success"
-              ? { ...s, status: "success", execution: event.execution }
-              : s,
-          ),
-        );
-      } else if (event.type === "completed") {
-        setRun(event.run);
-        setPhase("completed");
-        queryClient.invalidateQueries({ queryKey: ["agent-runs"] });
-        queryClient.invalidateQueries({ queryKey: ["incidents"] });
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || '';
+      const response = await fetch(`${API_URL}/api/transactions/${incident.transactionId}/investigate`, {
+        method: "POST",
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      // Read SSE stream
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let fullText = "";
+
+      if (reader) {
+        let done = false;
+        while (!done) {
+          const { value, done: readerDone } = await reader.read();
+          done = readerDone;
+          if (value) {
+            fullText += decoder.decode(value, { stream: !done });
+          }
+        }
+      }
+
+      // Try to parse JSON from the accumulated text.
+      // TrueFoundry might send chunks wrapped in SSE `data: {...}` lines.
+      // We will parse out the actual JSON content block.
+      let jsonStr = fullText;
+      // Extract the JSON object if it's inside markdown or SSE
+      const jsonMatch = fullText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        jsonStr = jsonMatch[0];
+      }
+      
+      const parsed = JSON.parse(jsonStr) as InvestigationResult;
+      
+      if ((parsed as any).error) {
+        throw new Error((parsed as any).error);
+      }
+      
+      setResult(parsed);
+      setPhase("completed");
+    } catch (err: any) {
+      if (err.name !== "AbortError") {
+        setPhase("error");
+        setErrorMsg(err.message || "An unknown error occurred.");
       }
     }
-
-    startInvestigation(incident.id, onEvent, controller.signal).catch((err) => {
-      if (err?.name !== "AbortError") setPhase("error");
-    });
-  }, [incident, plannedTools, queryClient]);
+  }, [incident]);
 
   const cancel = useCallback(() => {
     abortRef.current?.abort();
   }, []);
 
-  return { phase, steps, run, startedAt, start, cancel, plannedTools };
+  return { phase, result, errorMsg, start, cancel };
 }

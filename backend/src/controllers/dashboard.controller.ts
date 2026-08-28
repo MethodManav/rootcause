@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { mockTransactions } from '../data';
+import { logger } from '../utils/logger';
 
 export class DashboardController {
   // GET /api/dashboard/stats
@@ -25,7 +26,7 @@ export class DashboardController {
         }
       });
     } catch (error) {
-      console.error('[DashboardController] Error fetching stats:', error);
+      logger.error('[DashboardController] Error fetching stats:', error);
       res.status(500).json({ success: false, error: { message: "Internal server error" } });
     }
   }
@@ -60,7 +61,7 @@ export class DashboardController {
         ]
       });
     } catch (error) {
-      console.error('[DashboardController] Error fetching severity:', error);
+      logger.error('[DashboardController] Error fetching severity:', error);
       res.status(500).json({ success: false, error: { message: "Internal server error" } });
     }
   }
@@ -106,7 +107,7 @@ export class DashboardController {
         data: points
       });
     } catch (error) {
-      console.error('[DashboardController] Error fetching activity:', error);
+      logger.error('[DashboardController] Error fetching activity:', error);
       res.status(500).json({ success: false, error: { message: "Internal server error" } });
     }
   }

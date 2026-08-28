@@ -1,3 +1,5 @@
+import { logger } from '../utils/logger';
+
 export class InvestigationService {
   /**
    * Starts a payment failure investigation.
@@ -13,12 +15,12 @@ export class InvestigationService {
     // 3. Agent analyzes the data for failure reasons
     // 4. Return investigation result or update database
     
-    console.log(`[InvestigationService] Received investigation request for transaction: ${transactionId}`);
+    logger.info(`[InvestigationService] Received investigation request for transaction: ${transactionId}`);
     
     // Simulate some basic async work for now
     return new Promise((resolve) => {
       setTimeout(() => {
-        console.log(`[InvestigationService] Acknowledged ${transactionId}`);
+        logger.info(`[InvestigationService] Acknowledged ${transactionId}`);
         resolve();
       }, 100);
     });

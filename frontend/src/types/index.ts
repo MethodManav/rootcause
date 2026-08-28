@@ -115,3 +115,13 @@ export interface AgentRun {
   startedAt: string;
   completedAt: string | null;
 }
+
+export interface InvestigationResult {
+  transactionId: string;
+  status: string;
+  rootCause: string;
+  confidence: number;
+  evidence: string[];
+  explanation: string;
+  recommendedAction: string;
+}

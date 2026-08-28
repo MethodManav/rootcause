@@ -1,9 +1,7 @@
 import { CheckCircle2, Sparkles } from "lucide-react";
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
-import { ExecutionTrace } from "@/components/agent/ExecutionTrace";
-import { HarnessVisualization } from "@/components/agent/HarnessVisualization";
 import { EvidenceList } from "@/components/incidents/EvidenceList";
 import { FindingsCard } from "@/components/incidents/FindingsCard";
 import { IncidentStatusBadge } from "@/components/incidents/IncidentStatusBadge";
@@ -15,34 +13,18 @@ import { PageContainer } from "@/components/layout/PageContainer";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/state";
-import { useAgentRun } from "@/hooks/use-agent-runs";
 import { useIncident, useResolveIncident } from "@/hooks/use-incidents";
 import { useInvestigation } from "@/hooks/use-investigation";
 import { useTransaction } from "@/hooks/use-transactions";
 import { getCustomerById } from "@/lib/mock-data";
-import type { ToolExecution } from "@/types";
 
 export default function IncidentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: incident, isLoading, isError, refetch } = useIncident(id);
   const { data: transaction } = useTransaction(incident?.transactionId);
-  const { data: existingRun } = useAgentRun(incident?.agentRunId ?? undefined);
   const investigation = useInvestigation(incident);
   const resolveIncident = useResolveIncident();
-  const [selectedExecutionId, setSelectedExecutionId] = useState<string | null>(null);
-
-  const hasLiveRun = investigation.phase === "running" || investigation.phase === "completed";
-  const executions: ToolExecution[] = useMemo(() => {
-    if (hasLiveRun) return investigation.steps.map((s) => s.execution).filter((e): e is ToolExecution => e !== null);
-    return existingRun?.toolExecutions ?? [];
-  }, [hasLiveRun, investigation.steps, existingRun]);
-
-  const findings = investigation.run?.findings ?? (hasLiveRun ? null : existingRun?.findings ?? null);
-  const confidence = investigation.run?.confidence ?? incident?.aiConfidence ?? null;
-
-  const selectedExecution =
-    executions.find((e) => e.id === selectedExecutionId) ?? executions[executions.length - 1] ?? null;
 
   if (isLoading) {
     return (
@@ -63,8 +45,17 @@ export default function IncidentDetailPage() {
   }
 
   const customer = getCustomerById(incident.customerId);
-  const canInvestigate = investigation.phase === "idle" && !incident.agentRunId;
+  const canInvestigate = investigation.phase === "idle";
   const canResolve = incident.status !== "RESOLVED";
+
+  // When we have a result, use its status, else use the incident's status
+  const displayStatus = investigation.result?.status || incident.status;
+  
+  // Format the raw root cause string slightly
+  const formatRootCause = (rc?: string) => {
+    if (!rc) return "Unknown";
+    return rc.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+  };
 
   return (
     <PageContainer>
@@ -72,7 +63,7 @@ export default function IncidentDetailPage() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-semibold tracking-tight">{incident.id}</h1>
-            <IncidentStatusBadge status={incident.status} />
+            <IncidentStatusBadge status={displayStatus as any} />
           </div>
           <p className="mt-1 text-sm text-muted-foreground">{incident.type}</p>
           <Link
@@ -102,10 +93,14 @@ export default function IncidentDetailPage() {
 
       <div className="flex flex-wrap items-center gap-6 rounded-lg border border-border bg-card p-4">
         <StatBlock label="Severity" value={<SeverityBadge severity={incident.severity} />} />
-        <StatBlock label="Status" value={<IncidentStatusBadge status={incident.status} />} />
+        <StatBlock label="Status" value={<IncidentStatusBadge status={displayStatus as any} />} />
         <StatBlock
           label="AI Confidence"
-          value={<span className="text-sm font-semibold tabular-nums">{confidence !== null ? `${confidence}%` : "—"}</span>}
+          value={
+            <span className="text-sm font-semibold tabular-nums">
+              {investigation.result ? `${(investigation.result.confidence * 100).toFixed(0)}%` : incident.aiConfidence ? `${incident.aiConfidence}%` : "—"}
+            </span>
+          }
         />
       </div>
 
@@ -113,29 +108,39 @@ export default function IncidentDetailPage() {
 
       <InvestigationPanel
         phase={investigation.phase}
-        steps={investigation.steps}
-        startedAt={investigation.startedAt}
+        errorMsg={investigation.errorMsg}
         onStart={investigation.start}
         disabled={!canInvestigate}
       />
 
-      {executions.length > 0 && (
+      {investigation.result && (
         <>
-          <HarnessVisualization execution={selectedExecution} />
-          <ExecutionTrace
-            executions={executions}
-            selectedId={selectedExecution?.id}
-            onSelect={(e) => setSelectedExecutionId(e.id)}
-          />
-        </>
-      )}
-
-      {findings && (
-        <>
-          <FindingsCard findings={findings} />
+          <FindingsCard findings={{
+            rootCause: formatRootCause(investigation.result.rootCause),
+            confidence: Math.round((investigation.result.confidence || 0) * 100),
+            classification: "AI Agent Analysis",
+            evidence: (investigation.result.evidence || []).map(e => ({ label: e, positive: true })),
+            recommendedAction: {
+              title: "Recommendation",
+              description: investigation.result.recommendedAction || "No recommendation provided.",
+              priority: "MEDIUM"
+            }
+          }} />
+          
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <EvidenceList evidence={findings.evidence} riskSignals={findings.riskSignals} />
-            <RecommendationCard action={findings.recommendedAction} />
+            <EvidenceList evidence={(investigation.result.evidence || []).map(e => ({ label: e, positive: true }))} />
+            <RecommendationCard action={{
+              title: "Recommendation",
+              description: investigation.result.recommendedAction || "No recommendation provided.",
+              priority: "MEDIUM"
+            }} />
+          </div>
+
+          <div className="rounded-lg border border-border bg-card p-4">
+            <h3 className="mb-2 text-sm font-semibold">AI Explanation</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
+              {investigation.result.explanation || "No explanation provided."}
+            </p>
           </div>
         </>
       )}

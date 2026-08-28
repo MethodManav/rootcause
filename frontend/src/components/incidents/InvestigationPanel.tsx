@@ -1,9 +1,8 @@
-import { Bot, CheckCircle2, Loader2, Sparkles } from "lucide-react";
+import { Bot, CheckCircle2, Loader2, Sparkles, AlertCircle } from "lucide-react";
 
-import { AgentTimeline } from "@/components/incidents/AgentTimeline";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { InvestigationPhase, TimelineStep } from "@/hooks/use-investigation";
+import type { InvestigationPhase } from "@/hooks/use-investigation";
 
 const CHECKLIST = [
   "Transaction details",
@@ -15,14 +14,12 @@ const CHECKLIST = [
 
 export function InvestigationPanel({
   phase,
-  steps,
-  startedAt,
+  errorMsg,
   onStart,
   disabled,
 }: {
   phase: InvestigationPhase;
-  steps: TimelineStep[];
-  startedAt: string | null;
+  errorMsg?: string | null;
   onStart: () => void;
   disabled?: boolean;
 }) {
@@ -31,10 +28,10 @@ export function InvestigationPanel({
       <CardHeader className="flex-row items-center gap-2 space-y-0">
         <Bot className="size-4 text-primary" />
         <CardTitle className="text-base">AI Investigation</CardTitle>
-        {phase === "running" && (
+        {phase === "investigating" && (
           <span className="ml-auto flex items-center gap-1.5 text-xs font-medium text-info">
             <Loader2 className="size-3 animate-spin" />
-            Running
+            Investigating
           </span>
         )}
         {phase === "completed" && (
@@ -66,14 +63,32 @@ export function InvestigationPanel({
           </div>
         )}
 
-        {(phase === "running" || phase === "completed") && (
-          <AgentTimeline steps={steps} startedAt={startedAt} />
+        {phase === "investigating" && (
+          <div className="flex flex-col items-start gap-4 rounded-md border border-dashed border-border p-6 bg-muted/30">
+            <p className="text-sm font-medium">AI Agent is investigating...</p>
+            <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+              <span className="flex items-center gap-2 animate-pulse"><Loader2 className="size-3.5 animate-spin" /> Analyzing transaction details</span>
+              <span className="flex items-center gap-2 animate-pulse"><Loader2 className="size-3.5 animate-spin" /> Checking payment provider response</span>
+              <span className="flex items-center gap-2 animate-pulse"><Loader2 className="size-3.5 animate-spin" /> Analyzing related incidents</span>
+              <span className="flex items-center gap-2 animate-pulse"><Loader2 className="size-3.5 animate-spin" /> Reviewing application logs</span>
+            </div>
+          </div>
         )}
 
         {phase === "error" && (
-          <p className="text-sm text-critical">
-            The investigation could not complete. Please try again.
-          </p>
+          <div className="flex flex-col items-start gap-4 rounded-md border border-dashed border-destructive/50 p-6 bg-destructive/5">
+            <div className="flex items-center gap-2 text-destructive">
+              <AlertCircle className="size-4" />
+              <p className="text-sm font-medium">Investigation failed</p>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              We couldn't investigate this transaction right now.
+              {errorMsg && <span className="block mt-1 font-mono text-xs">{errorMsg}</span>}
+            </p>
+            <Button variant="outline" size="sm" onClick={onStart}>
+              Try Again
+            </Button>
+          </div>
         )}
       </CardContent>
     </Card>

@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { investigationService } from '../services/investigation.service';
+import { logger } from '../utils/logger';
 
 const StartInvestigationSchema = z.object({
   transactionId: z.string({ message: "transactionId is required" }).min(1, "transactionId cannot be empty"),
@@ -31,7 +32,7 @@ export class InvestigationController {
         return;
       }
 
-      console.error('[InvestigationController] Error starting investigation:', error);
+      logger.error('[InvestigationController] Error starting investigation:', error);
       res.status(500).json({
         success: false,
         error: {

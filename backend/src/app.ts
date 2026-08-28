@@ -4,7 +4,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import swaggerUi from 'swagger-ui-express';
 import swaggerDocument from './swagger.json';
-
+import { logger } from './utils/logger';
 import investigationRoutes from './routes/investigation.routes';
 import transactionRoutes from './routes/transaction.routes';
 import dashboardRoutes from './routes/dashboard.routes';
@@ -56,7 +56,7 @@ app.use((req: Request, res: Response) => {
 
 // Global error handler
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error('[Global Error Handler]:', err);
+  logger.error('[Global Error Handler]:', err);
   res.status(500).json({
     success: false,
     error: {
